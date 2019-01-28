@@ -10,8 +10,6 @@ extern crate hyper;
 use hyper::{Body, Response, Server};
 use hyper::service::service_fn_ok;
 use hyper::rt::Future;
-use hyper::header;
-
 mod errors;
 use errors::*;
 
@@ -20,8 +18,6 @@ fn main() {
 
     // Error handling code.
     if let Err(ref e) = run() {
-        use std::io::Write;
-
         error!("{}", e);
 
         for e in e.iter().skip(1) {
@@ -41,7 +37,7 @@ fn run() -> Result<()> {
 
     let make_service = || {
         service_fn_ok(|req| {
-            info!("Request from {:?} for {}", req.headers()[header::HOST], req.uri());
+            info!("Request from {:?} for {}", req.headers(), req.uri());
             Response::new(Body::from("Hello, World!"))
         })
     };
@@ -49,7 +45,9 @@ fn run() -> Result<()> {
     let server = Server::bind(&addr)
         .serve(make_service)
         .map_err(|e| eprintln!("server error: {}", e));
+    info!("listening on {}", addr);
 
+    info!("starting server...");
     hyper::rt::run(server);
 
     Ok(())
