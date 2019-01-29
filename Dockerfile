@@ -6,5 +6,6 @@ COPY . .
 RUN cargo install --path .
 
 EXPOSE 8080
+ENV RUST_LOG=shortener=info
 
 CMD ["shortener"]
