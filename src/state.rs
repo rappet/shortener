@@ -1,3 +1,5 @@
+use hyper::{Body, Response, Uri, StatusCode};
+
 use std::collections::HashMap;
 
 pub struct State {
@@ -21,5 +23,65 @@ impl State {
 }
 
 pub struct Entry {
-    pub destination: String,
+    destination: Uri,
+    redirect_type: RedirectType
+}
+
+impl Entry {
+    pub fn new(destination: Uri, redirect_type: RedirectType) -> Self {
+        Entry { destination, redirect_type }
+    }
+
+    pub fn generate_response(&self) -> Response<Body> {
+        match self.redirect_type {
+            RedirectType::HttpTemporary => {
+                Response::builder()
+                    .status(StatusCode::TEMPORARY_REDIRECT)
+                    .header("Location", self.destination.clone().to_string())
+                    .body(Body::from("redirecting..."))
+                    .unwrap()
+            },
+            RedirectType::HttpPermanent => {
+                Response::builder()
+                    .status(StatusCode::PERMANENT_REDIRECT)
+                    .header("Location", self.destination.clone().to_string())
+                    .body(Body::from("redirecting..."))
+                    .unwrap()
+            },
+            RedirectType::HtmlMetaRefresh { seconds } => {
+                Response::builder()
+                    .body(Body::from(format!("\
+<!DOCTYPE html><html>\
+<head>\
+<title>Redirecting...</title>\
+<meta http-equiv=\"refresh\" content=\"{seconds}; URL={url}\">\
+</head>\
+<body>\
+<p>Redirecting to <a href=\"{url}\">{url}</a> in {seconds} seconds.</p>\
+</body>\
+</html>\
+", url=self.destination, seconds=seconds)))
+                    .unwrap()
+            }
+        }
+    }
+}
+
+impl From<Uri> for Entry {
+    fn from(url: Uri) -> Self {
+        Entry {
+            destination: url,
+            redirect_type: RedirectType::default()
+        }
+    }
+}
+
+pub enum RedirectType {
+    HttpTemporary,
+    HttpPermanent,
+    HtmlMetaRefresh { seconds: u32 }
+}
+
+impl Default for RedirectType {
+    fn default() -> Self { RedirectType::HttpTemporary }
 }

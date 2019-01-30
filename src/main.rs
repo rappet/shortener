@@ -9,7 +9,7 @@ extern crate hyper;
 
 use hyper::rt::Future;
 use hyper::service::service_fn_ok;
-use hyper::{Body, Response, Server, StatusCode};
+use hyper::{Body, Response, Server, Uri};
 
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -46,10 +46,16 @@ fn run() -> Result<()> {
         let mut state = state.write().unwrap();
         state.add_mapping(
             "rppt",
-            state::Entry {
-                destination: String::from("https://example.rappet.de/"),
-            },
-        );
+            "https://example.rappet.de/".parse::<Uri>().unwrap().into()
+            );
+        state.add_mapping(
+            "permanent",
+            state::Entry::new("https://example.rappet.de/permanent".parse().unwrap(), state::RedirectType::HttpPermanent)
+            );
+        state.add_mapping(
+            "meta",
+            state::Entry::new("https://example.rappet.de/meta".parse().unwrap(), state::RedirectType::HtmlMetaRefresh{ seconds: 5 })
+            );
     }
 
     let make_service = move || {
@@ -61,13 +67,8 @@ fn run() -> Result<()> {
                 Some(v) => {
                     info!("Searching an entry for: {}", v);
                     if let Some(entry) = state.read().unwrap().find_mapping(v) {
-                        info!("Found mapping: {} => {}", v, entry.destination);
-                        let mut response = Response::builder();
-                        response
-                            .header("Location", entry.destination.clone())
-                            .status(StatusCode::TEMPORARY_REDIRECT)
-                            .body(Body::from("redirecting..."))
-                            .unwrap()
+                        //info!("Found mapping: {} => {}", v, entry.destination);
+                        entry.generate_response()
                     } else {
                         Response::new(Body::from("Did not find mapping."))
                     }
