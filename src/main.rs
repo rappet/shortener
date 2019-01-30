@@ -70,7 +70,7 @@ fn run() -> Result<()> {
 
     let make_service = move || {
         let state = state.clone();
-        service_fn_ok(move |request| Router::new(&request, &state).route())
+        service_fn_ok(move |request| Router::new(&request, &state).serve())
     };
 
     let server = Server::bind(&addr)

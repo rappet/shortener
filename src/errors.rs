@@ -4,6 +4,6 @@ error_chain! {
     }
 
     errors {
-
+        UrlError
     }
 }

@@ -1,7 +1,9 @@
 use crate::state::State;
-use hyper::{Body, Request, Response};
+use hyper::{Body, Request, Response, StatusCode};
 
 use std::sync::{Arc, RwLock};
+
+use crate::errors::{ErrorKind, Result};
 
 pub struct Router<'a> {
     request: &'a Request<Body>,
@@ -13,20 +15,38 @@ impl<'a> Router<'a> {
         Router { request, state }
     }
 
-    pub fn route(&self) -> Response<Body> {
+    pub fn serve(&self) -> Response<Body> {
         info!("Request for {}", self.request.uri());
-        let key = self.request.uri().path().split('/').nth(1);
+        self.route().unwrap_or_else(|err| {
+            error!("{}", err);
+            Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(Body::empty())
+                .unwrap()
+        })
+    }
+
+    fn route(&self) -> Result<Response<Body>> {
+        let key = self
+            .request
+            .uri()
+            .path()
+            .split('/')
+            .nth(1)
+            .ok_or(ErrorKind::UrlError)?;
+        info!("Searching an entry for: {}", key);
         match key {
-            Some(v) => {
-                info!("Searching an entry for: {}", v);
-                if let Some(entry) = self.state.read().unwrap().find_mapping(v) {
-                    //info!("Found mapping: {} => {}", v, entry.destination);
-                    entry.generate_response()
+            "" => Ok(Response::new(Body::from(include_str!(
+                "templates/index.html"
+            )))),
+            key => {
+                if let Some(entry) = self.state.read().unwrap().find_mapping(key) {
+                    //info!("Found mapping: {} => {}", key, entry.destination);
+                    Ok(entry.generate_response())
                 } else {
-                    Response::new(Body::from("Did not find mapping."))
+                    Ok(Response::new(Body::from("Did not find mapping.")))
                 }
             }
-            None => Response::new(Body::from("The Uri is empty!")),
         }
     }
 }
