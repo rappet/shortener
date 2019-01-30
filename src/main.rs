@@ -46,16 +46,22 @@ fn run() -> Result<()> {
         let mut state = state.write().unwrap();
         state.add_mapping(
             "rppt",
-            "https://example.rappet.de/".parse::<Uri>().unwrap().into()
-            );
+            "https://example.rappet.de/".parse::<Uri>().unwrap().into(),
+        );
         state.add_mapping(
             "permanent",
-            state::Entry::new("https://example.rappet.de/permanent".parse().unwrap(), state::RedirectType::HttpPermanent)
-            );
+            state::Entry::new(
+                "https://example.rappet.de/permanent".parse().unwrap(),
+                state::RedirectType::HttpPermanent,
+            ),
+        );
         state.add_mapping(
             "meta",
-            state::Entry::new("https://example.rappet.de/meta".parse().unwrap(), state::RedirectType::HtmlMetaRefresh{ seconds: 5 })
-            );
+            state::Entry::new(
+                "https://example.rappet.de/meta".parse().unwrap(),
+                state::RedirectType::HtmlMetaRefresh { seconds: 5 },
+            ),
+        );
     }
 
     let make_service = move || {
