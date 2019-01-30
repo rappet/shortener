@@ -9,7 +9,7 @@ extern crate hyper;
 
 use hyper::rt::Future;
 use hyper::service::service_fn_ok;
-use hyper::{Body, Response, Server, Uri};
+use hyper::{Server, Uri};
 
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -18,6 +18,10 @@ mod errors;
 use errors::*;
 
 mod state;
+use state::State;
+
+mod router;
+use router::Router;
 
 fn main() {
     env_logger::init();
@@ -41,7 +45,7 @@ fn main() {
 fn run() -> Result<()> {
     let addr = "[::]:8080".parse()?;
 
-    let state = Arc::new(RwLock::new(state::State::new()));
+    let state = Arc::new(RwLock::new(State::new()));
     {
         let mut state = state.write().unwrap();
         state.add_mapping(
@@ -66,22 +70,7 @@ fn run() -> Result<()> {
 
     let make_service = move || {
         let state = state.clone();
-        service_fn_ok(move |req| {
-            info!("Request for {}", req.uri());
-            let key = req.uri().path().split('/').nth(1);
-            match key {
-                Some(v) => {
-                    info!("Searching an entry for: {}", v);
-                    if let Some(entry) = state.read().unwrap().find_mapping(v) {
-                        //info!("Found mapping: {} => {}", v, entry.destination);
-                        entry.generate_response()
-                    } else {
-                        Response::new(Body::from("Did not find mapping."))
-                    }
-                }
-                None => Response::new(Body::from("The Uri is empty!")),
-            }
-        })
+        service_fn_ok(move |request| Router::new(&request, &state).route())
     };
 
     let server = Server::bind(&addr)
